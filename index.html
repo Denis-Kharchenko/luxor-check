@@ -64,23 +64,6 @@ h2 { font: 700 13px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppe
 .step button:disabled { opacity: .3; cursor: default; }
 .step output { min-width: 28px; text-align: center; font: 700 16px var(--f-mono); font-variant-numeric: tabular-nums; }
 
-.chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
-.chips button {
-  font: 500 13px var(--f-body); color: var(--fg); background: var(--surface);
-  border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; cursor: pointer;
-}
-.chips button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
-
-.pay {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid var(--line);
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-top: 14px;
-  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-}
 .pay-in { max-width: 520px; margin: 0 auto; display: grid; gap: 10px; }
 .sum { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .sum .lbl { font-size: 13px; color: var(--muted); }
@@ -128,8 +111,8 @@ h2 { font: 700 13px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppe
   </section>
 
   <section>
-    <h2>Еда на компанию</h2>
-    <p class="hint">Если ели вдвоём, выбирай ½, если втроём, ⅓ и так далее.</p>
+    <h2>Еда</h2>
+    <p class="hint">Сколько порций взял ты сам.</p>
     <div class="list" id="food"></div>
   </section>
 
@@ -172,9 +155,8 @@ const FOOD = [
   ["Гренки с сыром и чесноком", 1, 280], ["Картофель айдахо", 2, 500],
   ["Соус сырный", 1, 70], ["Хачапури по-мегрельски", 1, 580],
 ];
-const SHARES = [[0, "—"], [1, "целиком"], [2, "½"], [3, "⅓"], [4, "¼"], [5, "⅕"], [6, "⅙"], [8, "⅛"]];
 
-const KEY = "luxor-10-2026-10-17";
+const KEY = "luxor-10-2026-10-17-v2";
 let state = { who: "", d: {}, f: {} };
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) state = Object.assign(state, s); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
@@ -182,34 +164,23 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } c
 const rub = n => n.toLocaleString("ru-RU") + " ₽";
 const $ = id => document.getElementById(id);
 
-function renderDrinks() {
-  $("drinks").innerHTML = DRINKS.map(([n, q, s], i) => {
-    const c = state.d[i] || 0, unit = s / q;
+function renderList(el, items, key) {
+  $(el).innerHTML = items.map(([n, q, s], i) => {
+    const c = state[key][i] || 0, unit = s / q;
     return `<div class="row${c ? " on" : ""}">
       <div class="t"><div class="n">${n}</div><div class="p">${rub(unit)} за шт.${q > 1 ? ` · в чеке ${q} шт.` : ""}</div></div>
       <div class="step">
-        <button type="button" data-d="${i}" data-x="-1" aria-label="Меньше: ${n}" ${c ? "" : "disabled"}>−</button>
+        <button type="button" data-k="${key}" data-i="${i}" data-x="-1" aria-label="Меньше: ${n}" ${c ? "" : "disabled"}>−</button>
         <output>${c}</output>
-        <button type="button" data-d="${i}" data-x="1" aria-label="Больше: ${n}" ${c >= q ? "disabled" : ""}>+</button>
+        <button type="button" data-k="${key}" data-i="${i}" data-x="1" aria-label="Больше: ${n}" ${c >= q ? "disabled" : ""}>+</button>
       </div></div>`;
-  }).join("");
-}
-function renderFood() {
-  $("food").innerHTML = FOOD.map(([n, q, s], i) => {
-    const k = state.f[i] || 0;
-    return `<div class="row${k ? " on" : ""}">
-      <div class="t"><div class="n">${n}</div><div class="p">${rub(s)}${q > 1 ? ` за ${q} порции` : ""}</div></div>
-      <div class="p">${k ? rub(Math.ceil(s / k)) : ""}</div>
-      <div class="chips">${SHARES.map(([v, l]) =>
-        `<button type="button" data-f="${i}" data-v="${v}" aria-pressed="${k === v}">${l}</button>`).join("")}</div>
-    </div>`;
   }).join("");
 }
 
 function lines() {
   const out = [];
   DRINKS.forEach(([n, q, s], i) => { const c = state.d[i] || 0; if (c) out.push([`${n} ×${c}`, c * s / q]); });
-  FOOD.forEach(([n, q, s], i) => { const k = state.f[i] || 0; if (k) out.push([`${n}${k > 1 ? " (1/" + k + ")" : ""}`, Math.ceil(s / k)]); });
+  FOOD.forEach(([n, q, s], i) => { const c = state.f[i] || 0; if (c) out.push([`${n} ×${c}`, c * s / q]); });
   return out;
 }
 function totals() {
@@ -226,7 +197,7 @@ function renderPay() {
   open.setAttribute("aria-disabled", total ? "false" : "true");
   open.textContent = total ? `Открыть Т-Банк · ${rub(total)}` : "Отметь, что пил";
 }
-function render() { renderDrinks(); renderFood(); renderPay(); save(); }
+function render() { renderList("drinks", DRINKS, "d"); renderList("food", FOOD, "f"); renderPay(); save(); }
 
 let tt;
 function toast(msg) {
@@ -243,14 +214,10 @@ async function copy(text, msg) {
 }
 
 document.addEventListener("click", e => {
-  const b = e.target.closest("button[data-d],button[data-f]");
+  const b = e.target.closest("button[data-k]");
   if (!b) return;
-  if (b.dataset.d != null) {
-    const i = +b.dataset.d, q = DRINKS[i][1];
-    state.d[i] = Math.max(0, Math.min(q, (state.d[i] || 0) + +b.dataset.x));
-  } else {
-    state.f[+b.dataset.f] = +b.dataset.v;
-  }
+  const k = b.dataset.k, i = +b.dataset.i, q = (k === "d" ? DRINKS : FOOD)[i][1];
+  state[k][i] = Math.max(0, Math.min(q, (state[k][i] || 0) + +b.dataset.x));
   render();
 });
 $("who").value = state.who;
