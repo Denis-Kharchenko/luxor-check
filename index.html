@@ -169,7 +169,7 @@ button.btn.primary { border: 0; }
 </div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="bill.js"></script>
+<script src="bill.js?v=2"></script>
 <script>
 // Счёт по умолчанию: первый чек, LUXOR. Любой другой приходит в ссылке после #.
 const LUXOR = {
@@ -305,7 +305,8 @@ $("banks").addEventListener("click", e => {
   try { navigator.clipboard.writeText(sum).then(() => toast("Сумма скопирована"), () => {}); } catch (_) {}
   renderSheet();
   const app = BANKS.find(x => x[0] === bank)[3];
-  if (!app) return;
+  // Без «схема:» браузер принял бы ссылку за страницу нашего сайта и показал 404.
+  if (!app || !/^[a-z][a-z0-9+.-]*:/i.test(app)) return;
   clearTimeout(appTimer);
   // Обычная https-ссылка: телефон сам решит, открыть приложение или сайт. Открываем в новой вкладке,
   // чтобы страница счёта осталась на месте.
