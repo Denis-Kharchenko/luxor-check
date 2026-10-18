@@ -96,7 +96,7 @@ button.btn.primary { border: 0; }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .sheet-head h3 { margin: 0; font: 700 18px/1.2 var(--f-display); }
 .x { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 20px; cursor: pointer; }
-.banks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.banks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .bank { justify-content: flex-start; background: var(--bg); }
 .bank i { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--c); }
 .bank[aria-current=true] { border-color: var(--accent); color: var(--accent); }
@@ -155,7 +155,7 @@ button.btn.primary { border: 0; }
 <div class="sheet" id="sheet" hidden>
   <div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <div class="sheet-head">
-      <h3 id="sheetTitle">Из какого банка переводишь?</h3>
+      <h3 id="sheetTitle">Открыть банк</h3>
       <button class="x" id="sheetClose" type="button" aria-label="Закрыть">×</button>
     </div>
     <div class="banks" id="banks"></div>
@@ -184,6 +184,7 @@ const LUXOR = {
   ],
 };
 const GROUP_ORDER = ["Напитки", "Еда", "Другое"];
+const PAY_BANKS = ["tbank", "yandex", "ozon"];
 
 let B = LUXOR, KEY = "luxor-10-2026-10-17-v3";
 let state = { who: "", c: {} };
@@ -243,7 +244,8 @@ function renderPay() {
 
 function renderSheet() {
   const { total } = totals();
-  $("banks").innerHTML = BANKS.map(([id, name, c]) =>
+  // Кнопки только для банков, чьи приложения открываются по ссылке; остальным хватит подсказки ниже.
+  $("banks").innerHTML = PAY_BANKS.map(id => BANKS.find(b => b[0] === id)).map(([id, name, c]) =>
     `<button class="btn bank" type="button" data-bank="${id}" style="--c:${c}" aria-current="${bank === id}"><i></i>${name}</button>`
   ).join("");
   const b = BANKS.find(x => x[0] === bank);
