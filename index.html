@@ -169,7 +169,7 @@ button.btn.primary { border: 0; }
 </div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="bill.js?v=2"></script>
+<script src="bill.js?v=3"></script>
 <script>
 // Счёт по умолчанию: первый чек, LUXOR. Любой другой приходит в ссылке после #.
 const LUXOR = {
@@ -252,7 +252,7 @@ function renderSheet() {
   if (b && b[4]) { site.href = b[4]; site.textContent = `Приложение не открылось? Открыть сайт: ${b[1]}`; }
   const own = bank && bank === B.b;
   $("steps").innerHTML = [
-    "Открой приложение своего банка, раздел <b>Платежи → По номеру телефона</b>",
+    `Открой приложение ${bank && bank !== "other" ? `«${esc(bankName(bank))}»` : "своего банка"}, раздел <b>Платежи → По номеру телефона</b>`,
     `Номер: <b>${showPhone(B.p)}</b>`,
     own ? `Получатель тоже в банке «${esc(recipientBank())}», банк выбирать не нужно`
         : `Банк получателя: <b>${esc(recipientBank())}</b> (перевод через СБП)`,
