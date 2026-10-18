@@ -31,6 +31,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 <body>
 <div class="wrap">
   <h1>Какие ссылки открывают приложение</h1>
+  <p><b>Новое:</b> блок «Сбер: варианты…» (коды СП1, СП2…). Нужны те, после которых Сбер открывается без просьбы обновить приложение, и что именно открылось.</p>
   <p>Нажимай ссылки банков, которые у тебя установлены, по одной. После каждой возвращайся сюда. Запиши коды, которые открыли приложение, и что открылось: главный экран, экран перевода, магазин приложений или ничего.</p>
   <p id="ua"></p>
   <div id="list"></div>
@@ -40,7 +41,16 @@ const PHONE = "79224261875";
 const intent = (pkg, scheme = "") => scheme
   ? `intent://#Intent;scheme=${scheme};package=${pkg};end`
   : `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};end`;
+const SBER_PATHS = [
+  "main", "home", "payments", "payments/p2p", "payments/p2p/phone", "p2p", "transfers", "transfer",
+  "dl/payments", "sbol/payments", "payments/p2p-by-phone", "payments/phone",
+  `payments/p2p?type=phone_number&requisiteNumber=${PHONE}`, `p2p?phone=${PHONE}`,
+];
 const BANKS = [
+  ["СП", "Сбер: варианты без «обновите приложение»", [
+    ...SBER_PATHS.map(p => `sberbankonline://${p}`),
+    ...["payments", "payments/p2p"].map(p => `intent://${p}#Intent;scheme=sberbankonline;package=ru.sberbankmobile;end`),
+  ]],
   ["С", "Сбер", [
     "bank100000000111://", "sberbankonline://", "sbolonline://", "ios-app-bundle-id://ru.sberbank.onlineiphone",
     `sberbankonline://payments/p2p?type=phone_number&requisiteNumber=${PHONE}`,
