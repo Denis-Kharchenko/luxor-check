@@ -1,0 +1,8 @@
+name = "receipt-parser"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Секреты задаются командами, а не здесь:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put APP_PASSWORD

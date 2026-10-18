@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Новый счёт</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: one narrow column of three steps (photo → check rows → payment), same night palette as the bill page. */
+:root {
+  color-scheme: dark;
+  --bg: #15111c;
+  --surface: #1f1929;
+  --line: #352c42;
+  --fg: #f1ebf7;
+  --muted: #a397b3;
+  --accent: #f2b544;
+  --accent-ink: #1b1306;
+  --pink: #ff6fa8;
+  --ok: #6fdba0;
+  --f-display: "Unbounded", "Manrope", system-ui, sans-serif;
+  --f-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.45 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px calc(40px + env(safe-area-inset-bottom, 0px));
+}
+.wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 22px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font: 500 11px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 30px/1.05 var(--f-display); margin: 0; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.meta { color: var(--muted); font-size: 13px; }
+h2 { font: 700 13px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0; }
+section { display: grid; gap: 12px; }
+label { font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+input, select {
+  width: 100%; min-width: 0; font: 500 16px var(--f-body); color: var(--fg);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px;
+}
+input[type=number] { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible, .drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center;
+  min-height: 46px; padding: 8px 14px; border-radius: 12px; font: 700 14px var(--f-body);
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; text-decoration: none;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-size: 16px; }
+.btn:disabled { opacity: .45; cursor: default; }
+.row-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.row-btns .btn { flex: 1 1 160px; }
+
+.drop {
+  position: relative; display: grid; place-items: center; gap: 6px; text-align: center;
+  min-height: 150px; padding: 18px; border: 1.5px dashed var(--line); border-radius: 14px; background: var(--surface); cursor: pointer;
+}
+.drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop b { font: 700 16px var(--f-display); }
+.drop small { color: var(--muted); }
+.drop img { max-width: 100%; max-height: 320px; border-radius: 8px; }
+.status { font-size: 14px; color: var(--muted); }
+.status.err { color: var(--pink); }
+.status.busy::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 8px; border-radius: 50%; border: 2px solid var(--accent); border-right-color: transparent; vertical-align: -1px; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.items { display: grid; gap: 8px; }
+.item { display: grid; grid-template-columns: 1fr 64px 92px 40px; gap: 6px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.item .name { grid-column: 1 / -1; }
+.item select { grid-column: 1; font-size: 14px; padding: 9px 8px; }
+.item input, .item select { background: var(--bg); }
+.item .del { width: 40px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: 18px; cursor: pointer; }
+.item input[type=number] { padding: 10px 8px; text-align: right; }
+.check { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; padding: 12px 14px; border-radius: 12px; background: var(--surface); font: 13px var(--f-mono); font-variant-numeric: tabular-nums; }
+.check.ok { color: var(--ok); }
+.check.bad { color: var(--pink); }
+.out { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--accent); border-radius: 14px; }
+.out input { font: 13px var(--f-mono); }
+details { color: var(--muted); font-size: 13px; }
+details summary { cursor: pointer; }
+details .grid2 { margin-top: 10px; }
+.back { color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; justify-self: start; }
+@media (prefers-reduced-motion: reduce) { .status.busy::before { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Разделить счёт</div>
+    <h1>Загрузи <span>чек</span></h1>
+    <div class="meta">Сфотографируй чек, проверь позиции и отправь ребятам ссылку. Каждый отметит, что брал, и увидит, сколько перевести тебе.</div>
+  </header>
+
+  <section>
+    <h2>1. Фото чека</h2>
+    <label class="drop" id="drop">
+      <input id="photo" type="file" accept="image/*">
+      <img id="preview" alt="Фото чека" hidden>
+      <span id="dropText"><b>Выбрать фото</b><br><small>или сфотографировать сейчас</small></span>
+    </label>
+    <div class="row-btns">
+      <button class="btn primary" id="parse" type="button" disabled>Распознать чек</button>
+      <button class="btn" id="manual" type="button">Заполнить вручную</button>
+    </div>
+    <div class="status" id="status" role="status"></div>
+    <details id="settings">
+      <summary>Настройки распознавания</summary>
+      <div class="grid2">
+        <label>Пароль<input id="password" type="password" autocomplete="current-password"></label>
+        <label>Адрес сервера<input id="worker" type="url" placeholder="https://receipt-parser….workers.dev"></label>
+      </div>
+    </details>
+  </section>
+
+  <section id="step2" hidden>
+    <h2>2. Проверь позиции</h2>
+    <div class="grid2">
+      <label>Заведение<input id="venue" type="text" placeholder="Караоке-бар LUXOR"></label>
+      <label>Подпись<input id="sub" type="text" placeholder="стол 10 · 17.10.2026"></label>
+    </div>
+    <div class="items" id="items"></div>
+    <button class="btn" id="addRow" type="button">+ Добавить строку</button>
+    <div class="grid2">
+      <label>Итого в чеке, ₽<input id="receiptTotal" type="number" inputmode="decimal" min="0" step="1"></label>
+    </div>
+    <div class="check" id="check"></div>
+  </section>
+
+  <section id="step3" hidden>
+    <h2>3. Куда переводить</h2>
+    <div class="grid2">
+      <label>Твой телефон<input id="phone" type="tel" inputmode="tel" placeholder="8 922 426-18-75" autocomplete="tel"></label>
+      <label>Твой банк<select id="bank"></select></label>
+      <label>Сервисный сбор с человека, ₽<input id="fee" type="number" inputmode="numeric" min="0" step="10" value="50"></label>
+    </div>
+    <button class="btn primary" id="make" type="button">Создать ссылку</button>
+    <div class="status" id="makeStatus" role="status"></div>
+    <div class="out" id="out" hidden>
+      <label>Ссылка для ребят<input id="link" type="text" readonly></label>
+      <div class="row-btns">
+        <button class="btn primary" id="copyLink" type="button">Копировать ссылку</button>
+        <button class="btn" id="shareLink" type="button" hidden>Поделиться</button>
+        <a class="btn" id="openLink" href="#" target="_blank" rel="noopener">Открыть</a>
+      </div>
+    </div>
+  </section>
+
+  <a class="back" href="./">← К счёту LUXOR</a>
+</div>
+
+<script src="bill.js"></script>
+<script>
+// Адрес воркера распознавания. Можно переопределить в «Настройках распознавания».
+const WORKER_URL = "";
+const GROUPS = ["Напитки", "Еда", "Другое"];
+const $ = id => document.getElementById(id);
+const rub = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get(k, d = "") { try { return localStorage.getItem("new-" + k) ?? d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("new-" + k, v); } catch (e) {} },
+};
+
+let image = null; // {data, mediaType}
+let items = [];   // [{name, qty, sum, group}]
+
+$("bank").innerHTML = BANKS.filter(b => b[0] !== "other").map(([id, n]) => `<option value="${id}">${n}</option>`).join("");
+$("password").value = store.get("password");
+$("worker").value = store.get("worker", WORKER_URL);
+$("phone").value = store.get("phone");
+$("bank").value = store.get("bank", "tbank");
+$("fee").value = store.get("fee", "50");
+if (!$("password").value || !$("worker").value) $("settings").open = true;
+for (const id of ["password", "worker", "phone", "bank", "fee"]) $(id).addEventListener("change", e => store.set(id, e.target.value.trim()));
+
+function status(el, text, kind = "") { el.textContent = text; el.className = "status " + kind; }
+
+// Уменьшаем фото: длинная сторона до 2400 px, JPEG. Этого хватает, чтобы прочитать мелкий шрифт чека.
+async function shrink(file) {
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  for (const q of [0.85, 0.7, 0.55]) {
+    const url = c.toDataURL("image/jpeg", q);
+    if (url.length * 0.75 < 4.5 * 1024 * 1024) return { url, data: url.split(",")[1], mediaType: "image/jpeg" };
+  }
+  throw new Error("too big");
+}
+
+$("photo").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  status($("status"), "Готовлю фото…", "busy");
+  try {
+    const s = await shrink(f);
+    image = s;
+    $("preview").src = s.url; $("preview").hidden = false; $("dropText").hidden = true;
+    $("parse").disabled = false;
+    status($("status"), "Фото готово. Нажми «Распознать чек».");
+  } catch (err) {
+    image = null; $("parse").disabled = true;
+    status($("status"), "Не получилось открыть фото. Попробуй другое, в формате JPEG или PNG.", "err");
+  }
+});
+
+$("parse").addEventListener("click", async () => {
+  const url = $("worker").value.trim(), pw = $("password").value;
+  if (!url || !pw) { $("settings").open = true; status($("status"), "Укажи пароль и адрес сервера в настройках ниже.", "err"); return; }
+  $("parse").disabled = true;
+  status($("status"), "Распознаю чек, обычно это 15–40 секунд…", "busy");
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Password": pw },
+      body: JSON.stringify({ image: image.data, mediaType: image.mediaType }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Сервер ответил ошибкой ${res.status}.`);
+    fill(data);
+    status($("status"), `Нашёл ${items.length} ${plural(items.length, "позицию", "позиции", "позиций")}. Проверь их ниже.`);
+  } catch (err) {
+    status($("status"), err.message === "Failed to fetch" ? "Не удалось связаться с сервером. Проверь адрес в настройках и интернет." : err.message, "err");
+  } finally { $("parse").disabled = !image; }
+});
+
+$("manual").addEventListener("click", () => {
+  if (!items.length) items.push({ name: "", qty: 1, sum: 0, group: "Напитки" });
+  showSteps(); renderItems();
+  $("items").querySelector("input")?.focus();
+});
+
+function plural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
+}
+
+function fill(d) {
+  $("venue").value = d.venue || "";
+  $("sub").value = [d.table ? `стол ${d.table}` : "", d.date || ""].filter(Boolean).join(" · ");
+  $("receiptTotal").value = d.total || "";
+  items = (d.items || []).map(it => ({
+    name: String(it.name || ""), qty: Math.max(1, Math.round(+it.qty || 1)), sum: +it.sum || 0,
+    group: GROUPS.includes(it.group) ? it.group : "Другое",
+  }));
+  showSteps(); renderItems();
+}
+function showSteps() { $("step2").hidden = false; $("step3").hidden = false; }
+
+function renderItems() {
+  $("items").innerHTML = items.map((it, i) => `<div class="item" data-i="${i}">
+    <input class="name" type="text" data-f="name" value="${esc(it.name)}" placeholder="Название" aria-label="Название, строка ${i + 1}">
+    <select data-f="group" aria-label="Раздел, строка ${i + 1}">${GROUPS.map(g => `<option${g === it.group ? " selected" : ""}>${g}</option>`).join("")}</select>
+    <input type="number" data-f="qty" value="${it.qty}" min="1" step="1" inputmode="numeric" aria-label="Количество, строка ${i + 1}" title="Количество">
+    <input type="number" data-f="sum" value="${it.sum}" min="0" step="1" inputmode="decimal" aria-label="Сумма, строка ${i + 1}" title="Сумма по строке, ₽">
+    <button class="del" type="button" aria-label="Удалить строку ${i + 1}">×</button>
+  </div>`).join("");
+  renderCheck();
+}
+function renderCheck() {
+  const sum = items.reduce((a, it) => a + (+it.sum || 0), 0), T = +$("receiptTotal").value || 0;
+  const el = $("check");
+  const diff = Math.round(sum - T);
+  el.className = "check " + (T ? (diff === 0 ? "ok" : "bad") : "");
+  el.innerHTML = `<span>Сумма строк: ${rub(sum)}</span><span>${!T ? "Итог чека не указан" : diff === 0 ? "Сходится с чеком ✓" : `Расходится с чеком на ${rub(Math.abs(diff))}`}</span>`;
+}
+
+$("items").addEventListener("input", e => {
+  const f = e.target.dataset.f, row = e.target.closest(".item");
+  if (!f || !row) return;
+  const it = items[+row.dataset.i];
+  it[f] = f === "name" || f === "group" ? e.target.value : +e.target.value;
+  renderCheck();
+});
+$("items").addEventListener("click", e => {
+  const row = e.target.closest(".del") && e.target.closest(".item");
+  if (!row) return;
+  items.splice(+row.dataset.i, 1); renderItems();
+});
+$("addRow").addEventListener("click", () => {
+  items.push({ name: "", qty: 1, sum: 0, group: "Напитки" }); renderItems();
+  const names = $("items").querySelectorAll(".name"); names[names.length - 1].focus();
+});
+$("receiptTotal").addEventListener("input", renderCheck);
+
+$("make").addEventListener("click", async () => {
+  const p = normPhone($("phone").value);
+  const clean = items.filter(it => it.name.trim() && it.sum > 0 && it.qty >= 1);
+  if (!clean.length) { status($("makeStatus"), "Добавь хотя бы одну позицию с названием и суммой.", "err"); return; }
+  if (!p) { status($("makeStatus"), "Проверь телефон: нужен российский номер, например 8 922 426-18-75.", "err"); $("phone").focus(); return; }
+  store.set("phone", $("phone").value.trim());
+  const bill = {
+    v: 1, t: $("venue").value.trim() || "Счёт", s: $("sub").value.trim(), p, b: $("bank").value,
+    f: Math.max(0, Math.round(+$("fee").value || 0)), T: Math.round(+$("receiptTotal").value || 0),
+    i: clean.map(it => [it.name.trim(), Math.round(it.qty), Math.round(it.sum * 100) / 100, it.group]),
+  };
+  const link = new URL("./", location.href).href + "#" + await encodeBill(bill);
+  $("link").value = link; $("openLink").href = link;
+  $("shareLink").hidden = !navigator.share;
+  $("out").hidden = false;
+  status($("makeStatus"), "");
+  $("out").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+});
+$("copyLink").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("link").value); status($("makeStatus"), "Ссылка скопирована, кидай в чат."); }
+  catch (e) { $("link").select(); status($("makeStatus"), "Скопируй ссылку из поля вручную."); }
+});
+$("shareLink").addEventListener("click", () => {
+  navigator.share({ title: $("venue").value || "Счёт", text: "Отметь, что брал, и переведи свою часть", url: $("link").value }).catch(() => {});
+});
+</script>
+</body>
+</html>

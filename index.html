@@ -103,6 +103,9 @@ button.btn.primary { border: 0; }
 .steps { margin: 0; padding: 12px 14px 12px 32px; background: var(--bg); border-radius: 12px; display: grid; gap: 6px; font-size: 14px; }
 .steps b { color: var(--accent); }
 .sheet .btns { grid-template-columns: 1fr 1fr; }
+#lists { display: grid; gap: 20px; }
+.err { margin: 0; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--pink) 18%, var(--surface)); color: var(--fg); }
+.newbill { color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; justify-self: start; }
 .foot { display: flex; gap: 8px; flex-wrap: wrap; }
 .foot .btn { flex: 1 1 160px; }
 .note { font-size: 12px; color: var(--muted); }
@@ -114,33 +117,25 @@ button.btn.primary { border: 0; }
 
 <div class="wrap">
   <header>
-    <div class="eyebrow">Караоке-бар LUXOR · стол 10 · 17.10.2026</div>
-    <h1>Что ты <span>выпил?</span></h1>
-    <div class="meta">Отметь своё, и страница посчитает, сколько перевести. Весь чек: <b>9 580 ₽</b>. Сервисный сбор: <b>50 ₽</b> с человека.</div>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1>Что ты <span>брал?</span></h1>
+    <div class="meta" id="meta"></div>
   </header>
+  <p class="err" id="linkError" hidden>Ссылка на счёт повреждена. Попроси организатора прислать её ещё раз.</p>
 
   <div class="name">
     <label for="who">Как тебя зовут</label>
     <input id="who" type="text" placeholder="Например, Маша" autocomplete="given-name">
   </div>
 
-  <section>
-    <h2>Напитки</h2>
-    <p class="hint">Сколько штук взял ты сам.</p>
-    <div class="list" id="drinks"></div>
-  </section>
-
-  <section>
-    <h2>Еда</h2>
-    <p class="hint">Сколько порций взял ты сам.</p>
-    <div class="list" id="food"></div>
-  </section>
+  <div id="lists"></div>
 
   <div class="foot">
     <button class="btn" id="share" type="button">Скопировать мой список для чата</button>
     <button class="btn" id="reset" type="button">Сбросить</button>
   </div>
-  <p class="note">Перевод по номеру телефона в Т-Банк из любого банка. Если приложение не открылось само, открой его вручную: <b>Платежи → По номеру телефона</b>.</p>
+  <p class="note" id="note"></p>
+  <a class="newbill" href="new.html">Сделать такую страницу для своего чека →</a>
 </div>
 
 <div class="pay">
@@ -154,7 +149,7 @@ button.btn.primary { border: 0; }
       <button class="btn" id="copyPhone" type="button">Копировать номер</button>
       <button class="btn" id="copySum" type="button">Копировать сумму</button>
     </div>
-    <div class="phone">+7 922 426-18-75 · Т-Банк</div>
+    <div class="phone" id="phoneLine"></div>
   </div>
 </div>
 <div class="sheet" id="sheet" hidden>
@@ -174,73 +169,73 @@ button.btn.primary { border: 0; }
 </div>
 <div class="toast" id="toast" hidden></div>
 
+<script src="bill.js"></script>
 <script>
-// Личная ссылка для переводов из приложения Т-Банка (вида https://www.tbank.ru/rm/...).
-// Пока пусто, кнопка Т-Банка ведёт на страницу платежей банка.
-const TBANK_LINK = "";
-const PHONE = "+79224261875";
-const PHONE_SHOWN = "+7 922 426-18-75";
-const FEE = 50;
-// Приложение открываем по схеме СБП bank<код>:// (её регистрируют банковские приложения),
-// а если не открылось, предлагаем сайт банка.
-const BANKS = [
-  ["sber", "Сбер", "#21a038", "100000000111", "https://online.sberbank.ru/"],
-  ["tbank", "Т-Банк", "#ffdd2d", "100000000004", TBANK_LINK || "https://www.tbank.ru/mybank/payments/"],
-  ["alfa", "Альфа", "#ef3124", "100000000008", "https://web.alfabank.ru/"],
-  ["vtb", "ВТБ", "#4d7bff", "100000000005", "https://online.vtb.ru/"],
-  ["ozon", "Озон Банк", "#005bff", "100000000273", "https://finance.ozon.ru/"],
-  ["gpb", "Газпромбанк", "#4a8fd8", "100000000001", "https://www.gazprombank.ru/"],
-  ["yandex", "Яндекс Банк", "#fc3f1d", "100000000150", "https://bank.yandex.ru/"],
-  ["other", "Другой банк", "#a397b3", "", ""],
-];
+// Счёт по умолчанию: первый чек, LUXOR. Любой другой приходит в ссылке после #.
+const LUXOR = {
+  v: 1, t: "Караоке-бар LUXOR", s: "стол 10 · 17.10.2026", p: "+79224261875", b: "tbank", f: 50, T: 9580,
+  i: [
+    ["Пина-колада", 1, 350, "Напитки"], ["Зелёный дракон", 1, 360, "Напитки"], ["Лонг-Айленд", 4, 2280, "Напитки"],
+    ["Чай с чабрецом", 1, 350, "Напитки"], ["Авторский коктейль", 1, 520, "Напитки"], ["Чешское тёмное 0,5", 5, 1250, "Напитки"],
+    ["Апероль шприц", 3, 2040, "Напитки"], ["Секс на пляже", 1, 340, "Напитки"], ["Чай зелёный", 1, 350, "Напитки"],
+    ["Блю лика", 1, 310, "Напитки"],
+    ["Гренки с сыром и чесноком", 1, 280, "Еда"], ["Картофель айдахо", 2, 500, "Еда"],
+    ["Соус сырный", 1, 70, "Еда"], ["Хачапури по-мегрельски", 1, 580, "Еда"],
+  ],
+};
+const GROUP_ORDER = ["Напитки", "Еда", "Другое"];
+
+let B = LUXOR, KEY = "luxor-10-2026-10-17-v3";
+let state = { who: "", c: {} };
 let bank = "", fallback = false, appTimer;
 
-const DRINKS = [
-  ["Пина-колада", 1, 350], ["Зелёный дракон", 1, 360], ["Лонг-Айленд", 4, 2280],
-  ["Чай с чабрецом", 1, 350], ["Авторский коктейль", 1, 520], ["Чешское тёмное 0,5", 5, 1250],
-  ["Апероль шприц", 3, 2040], ["Секс на пляже", 1, 340], ["Чай зелёный", 1, 350], ["Блю лика", 1, 310],
-];
-const FOOD = [
-  ["Гренки с сыром и чесноком", 1, 280], ["Картофель айдахо", 2, 500],
-  ["Соус сырный", 1, 70], ["Хачапури по-мегрельски", 1, 580],
-];
-
-const KEY = "luxor-10-2026-10-17-v2";
-let state = { who: "", d: {}, f: {} };
-try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) state = Object.assign(state, s); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
-
-const rub = n => n.toLocaleString("ru-RU") + " ₽";
+const rub = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
 const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const recipientBank = () => bankName(B.b) || "банк получателя";
 
-function renderList(el, items, key) {
-  $(el).innerHTML = items.map(([n, q, s], i) => {
-    const c = state[key][i] || 0, unit = s / q;
-    return `<div class="row${c ? " on" : ""}">
-      <div class="t"><div class="n">${n}</div><div class="p">${rub(unit)} за шт.${q > 1 ? ` · в чеке ${q} шт.` : ""}</div></div>
-      <div class="step">
-        <button type="button" data-k="${key}" data-i="${i}" data-x="-1" aria-label="Меньше: ${n}" ${c ? "" : "disabled"}>−</button>
-        <output>${c}</output>
-        <button type="button" data-k="${key}" data-i="${i}" data-x="1" aria-label="Больше: ${n}" ${c >= q ? "disabled" : ""}>+</button>
-      </div></div>`;
-  }).join("");
+function renderHead() {
+  document.title = `Счёт: ${B.t}`;
+  $("eyebrow").textContent = [B.t, B.s].filter(Boolean).join(" · ");
+  const fee = B.f ? ` Сервисный сбор: <b>${rub(B.f)}</b> с человека.` : "";
+  const total = B.T ? ` Весь чек: <b>${rub(B.T)}</b>.` : "";
+  $("meta").innerHTML = `Отметь своё, и страница посчитает, сколько перевести.${total}${fee}`;
+  $("phoneLine").textContent = `${showPhone(B.p)} · ${recipientBank()}`;
+  $("note").innerHTML = `Перевод по номеру телефона, получатель в банке «${esc(recipientBank())}». Если приложение не открылось само, открой его вручную: <b>Платежи → По номеру телефона</b>.`;
+}
+
+function renderLists() {
+  const groups = {};
+  B.i.forEach((it, i) => { const g = GROUP_ORDER.includes(it[3]) ? it[3] : "Другое"; (groups[g] = groups[g] || []).push(i); });
+  const names = GROUP_ORDER.filter(g => groups[g]);
+  $("lists").innerHTML = names.map(g => `<section>
+    <h2>${names.length > 1 ? g : "Позиции"}</h2>
+    <p class="hint">Сколько штук взял ты сам.</p>
+    <div class="list">${groups[g].map(i => {
+      const [n, q, s] = B.i[i], c = state.c[i] || 0;
+      return `<div class="row${c ? " on" : ""}">
+        <div class="t"><div class="n">${esc(n)}</div><div class="p">${rub(s / q)} за шт.${q > 1 ? ` · в чеке ${q} шт.` : ""}</div></div>
+        <div class="step">
+          <button type="button" data-i="${i}" data-x="-1" aria-label="Меньше: ${esc(n)}" ${c ? "" : "disabled"}>−</button>
+          <output>${c}</output>
+          <button type="button" data-i="${i}" data-x="1" aria-label="Больше: ${esc(n)}" ${c >= q ? "disabled" : ""}>+</button>
+        </div></div>`;
+    }).join("")}</div></section>`).join("");
 }
 
 function lines() {
-  const out = [];
-  DRINKS.forEach(([n, q, s], i) => { const c = state.d[i] || 0; if (c) out.push([`${n} ×${c}`, c * s / q]); });
-  FOOD.forEach(([n, q, s], i) => { const c = state.f[i] || 0; if (c) out.push([`${n} ×${c}`, c * s / q]); });
-  return out;
+  return B.i.map(([n, q, s], i) => [n, state.c[i] || 0, s / q]).filter(l => l[1]).map(([n, c, u]) => [`${n} ×${c}`, c * u]);
 }
 function totals() {
   const items = Math.ceil(lines().reduce((a, [, v]) => a + v, 0));
-  return { items, total: items ? items + FEE : 0 };
+  return { items, total: items ? items + (B.f || 0) : 0 };
 }
 
 function renderPay() {
   const { items, total } = totals();
   $("total").textContent = rub(total);
-  $("breakdown").textContent = `${rub(items)} + ${FEE} ₽ сбор`;
+  $("breakdown").textContent = B.f ? `${rub(items)} + ${B.f} ₽ сбор` : "без сервисного сбора";
   const open = $("open");
   open.setAttribute("aria-disabled", total ? "false" : "true");
   open.textContent = total ? `Перевести ${rub(total)}` : "Отметь, что брал";
@@ -255,11 +250,12 @@ function renderSheet() {
   const site = $("siteLink");
   site.hidden = !(fallback && b && b[4]);
   if (b && b[4]) { site.href = b[4]; site.textContent = `Приложение не открылось? Открыть сайт: ${b[1]}`; }
-  const own = bank === "tbank";
+  const own = bank && bank === B.b;
   $("steps").innerHTML = [
     "Открой приложение своего банка, раздел <b>Платежи → По номеру телефона</b>",
-    `Номер: <b>${PHONE_SHOWN}</b>`,
-    own ? "Получатель тоже в Т-Банке, банк выбирать не нужно" : "Банк получателя: <b>Т-Банк</b> (перевод через СБП)",
+    `Номер: <b>${showPhone(B.p)}</b>`,
+    own ? `Получатель тоже в банке «${esc(recipientBank())}», банк выбирать не нужно`
+        : `Банк получателя: <b>${esc(recipientBank())}</b> (перевод через СБП)`,
     `Сумма: <b>${rub(total)}</b>${bank ? ", уже скопирована, просто вставь" : ""}`,
   ].map(s => `<li>${s}</li>`).join("");
 }
@@ -268,7 +264,7 @@ function openSheet() {
   renderSheet(); $("sheet").hidden = false; $("sheetClose").focus();
 }
 function closeSheet() { $("sheet").hidden = true; $("open").focus(); }
-function render() { renderList("drinks", DRINKS, "d"); renderList("food", FOOD, "f"); renderPay(); save(); }
+function render() { renderLists(); renderPay(); save(); }
 
 let tt;
 function toast(msg) {
@@ -284,24 +280,23 @@ async function copy(text, msg) {
   }
 }
 
-document.addEventListener("click", e => {
-  const b = e.target.closest("button[data-k]");
+$("lists").addEventListener("click", e => {
+  const b = e.target.closest("button[data-i]");
   if (!b) return;
-  const k = b.dataset.k, i = +b.dataset.i, q = (k === "d" ? DRINKS : FOOD)[i][1];
-  state[k][i] = Math.max(0, Math.min(q, (state[k][i] || 0) + +b.dataset.x));
+  const i = +b.dataset.i, q = B.i[i][1];
+  state.c[i] = Math.max(0, Math.min(q, (state.c[i] || 0) + +b.dataset.x));
   render();
 });
-$("who").value = state.who;
 $("who").addEventListener("input", e => { state.who = e.target.value.trim(); save(); });
-$("copyPhone").addEventListener("click", () => copy(PHONE, "Номер скопирован"));
+$("copyPhone").addEventListener("click", () => copy(B.p, "Номер скопирован"));
 $("copySum").addEventListener("click", () => copy(String(totals().total), "Сумма скопирована"));
 $("open").addEventListener("click", openSheet);
 $("sheetClose").addEventListener("click", closeSheet);
 $("sheet").addEventListener("click", e => { if (e.target === $("sheet")) closeSheet(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
-$("sheetPhone").addEventListener("click", () => copy(PHONE, "Номер скопирован"));
+$("sheetPhone").addEventListener("click", () => copy(B.p, "Номер скопирован"));
 $("sheetSum").addEventListener("click", () => copy(String(totals().total), "Сумма скопирована"));
-// Копируем сумму перед переходом в банк, чтобы в приложении её осталось только вставить.
+// Копируем сумму и пробуем открыть приложение банка; если не вышло, предлагаем сайт.
 $("banks").addEventListener("click", e => {
   const b = e.target.closest("[data-bank]");
   if (!b) return;
@@ -318,20 +313,30 @@ $("banks").addEventListener("click", e => {
   }, 2000);
   location.href = `bank${code}://`;
 });
-const cancelFallback = () => { if (document.visibilityState === "hidden") clearTimeout(appTimer); };
-document.addEventListener("visibilitychange", cancelFallback);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") clearTimeout(appTimer); });
 window.addEventListener("pagehide", () => clearTimeout(appTimer));
 $("share").addEventListener("click", () => {
   const ls = lines(), { items, total } = totals();
   if (!ls.length) { toast("Сначала отметь, что брал"); return; }
-  const text = `${state.who || "Я"} — LUXOR, стол 10:\n` +
+  const text = `${state.who || "Я"} — ${[B.t, B.s].filter(Boolean).join(", ")}:\n` +
     ls.map(([n, v]) => `• ${n} — ${rub(Math.ceil(v))}`).join("\n") +
-    `\nИтого: ${rub(items)} + ${FEE} ₽ сбор = ${rub(total)}\nПеревожу на ${PHONE} (Т-Банк)`;
+    `\nИтого: ${rub(items)}${B.f ? ` + ${B.f} ₽ сбор = ${rub(total)}` : ""}\nПеревожу на ${showPhone(B.p)} (${recipientBank()})`;
   copy(text, "Список скопирован, вставь в чат");
 });
-$("reset").addEventListener("click", () => { state.d = {}; state.f = {}; render(); toast("Всё сброшено"); });
+$("reset").addEventListener("click", () => { state.c = {}; render(); toast("Всё сброшено"); });
 
-render();
+async function boot() {
+  const code = location.hash.slice(1);
+  if (code) {
+    try { B = await decodeBill(code); KEY = "bill-" + [...code].reduce((h, ch) => (h * 33 + ch.charCodeAt(0)) >>> 0, 5381).toString(36); }
+    catch (e) { $("linkError").hidden = false; }
+  }
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.c) state = s; } catch (e) {}
+  $("who").value = state.who || "";
+  renderHead(); render();
+}
+window.addEventListener("hashchange", () => location.reload());
+boot();
 </script>
 </body>
 </html>
