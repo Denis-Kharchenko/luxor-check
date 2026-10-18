@@ -164,6 +164,7 @@ button.btn.primary { border: 0; }
       <button class="x" id="sheetClose" type="button" aria-label="Закрыть">×</button>
     </div>
     <div class="banks" id="banks"></div>
+    <a class="btn primary" id="siteLink" href="#" target="_blank" rel="noopener" hidden></a>
     <ol class="steps" id="steps"></ol>
     <div class="btns">
       <button class="btn" id="sheetPhone" type="button">Копировать номер</button>
@@ -180,18 +181,19 @@ const TBANK_LINK = "";
 const PHONE = "+79224261875";
 const PHONE_SHOWN = "+7 922 426-18-75";
 const FEE = 50;
-// На телефоне с установленным приложением эти ссылки обычно открывают приложение банка.
+// Приложение открываем по схеме СБП bank<код>:// (её регистрируют банковские приложения),
+// а если не открылось, предлагаем сайт банка.
 const BANKS = [
-  ["sber", "Сбер", "#21a038", "https://online.sberbank.ru/"],
-  ["tbank", "Т-Банк", "#ffdd2d", TBANK_LINK || "https://www.tbank.ru/mybank/payments/"],
-  ["alfa", "Альфа", "#ef3124", "https://web.alfabank.ru/"],
-  ["vtb", "ВТБ", "#0a2896", "https://online.vtb.ru/"],
-  ["ozon", "Озон Банк", "#005bff", "https://finance.ozon.ru/"],
-  ["gpb", "Газпромбанк", "#4a8fd8", "https://www.gazprombank.ru/"],
-  ["yandex", "Яндекс Банк", "#fc3f1d", "https://bank.yandex.ru/"],
-  ["other", "Другой банк", "#a397b3", ""],
+  ["sber", "Сбер", "#21a038", "100000000111", "https://online.sberbank.ru/"],
+  ["tbank", "Т-Банк", "#ffdd2d", "100000000004", TBANK_LINK || "https://www.tbank.ru/mybank/payments/"],
+  ["alfa", "Альфа", "#ef3124", "100000000008", "https://web.alfabank.ru/"],
+  ["vtb", "ВТБ", "#4d7bff", "100000000005", "https://online.vtb.ru/"],
+  ["ozon", "Озон Банк", "#005bff", "100000000273", "https://finance.ozon.ru/"],
+  ["gpb", "Газпромбанк", "#4a8fd8", "100000000001", "https://www.gazprombank.ru/"],
+  ["yandex", "Яндекс Банк", "#fc3f1d", "100000000150", "https://bank.yandex.ru/"],
+  ["other", "Другой банк", "#a397b3", "", ""],
 ];
-let bank = "";
+let bank = "", fallback = false, appTimer;
 
 const DRINKS = [
   ["Пина-колада", 1, 350], ["Зелёный дракон", 1, 360], ["Лонг-Айленд", 4, 2280],
@@ -246,10 +248,13 @@ function renderPay() {
 
 function renderSheet() {
   const { total } = totals();
-  $("banks").innerHTML = BANKS.map(([id, name, c, url]) => url
-    ? `<a class="btn bank" href="${url}" target="_blank" rel="noopener" data-bank="${id}" style="--c:${c}" aria-current="${bank === id}"><i></i>${name}</a>`
-    : `<button class="btn bank" type="button" data-bank="${id}" style="--c:${c}" aria-current="${bank === id}"><i></i>${name}</button>`
+  $("banks").innerHTML = BANKS.map(([id, name, c]) =>
+    `<button class="btn bank" type="button" data-bank="${id}" style="--c:${c}" aria-current="${bank === id}"><i></i>${name}</button>`
   ).join("");
+  const b = BANKS.find(x => x[0] === bank);
+  const site = $("siteLink");
+  site.hidden = !(fallback && b && b[4]);
+  if (b && b[4]) { site.href = b[4]; site.textContent = `Приложение не открылось? Открыть сайт: ${b[1]}`; }
   const own = bank === "tbank";
   $("steps").innerHTML = [
     "Открой приложение своего банка, раздел <b>Платежи → По номеру телефона</b>",
@@ -300,12 +305,22 @@ $("sheetSum").addEventListener("click", () => copy(String(totals().total), "Су
 $("banks").addEventListener("click", e => {
   const b = e.target.closest("[data-bank]");
   if (!b) return;
-  bank = b.dataset.bank;
+  bank = b.dataset.bank; fallback = false;
   const sum = String(totals().total);
   try { navigator.clipboard.writeText(sum).then(() => toast("Сумма скопирована"), () => {}); } catch (_) {}
-  // Перерисовываем после перехода по ссылке, иначе клик потеряется.
-  setTimeout(renderSheet, 0);
+  renderSheet();
+  const code = BANKS.find(x => x[0] === bank)[3];
+  if (!code) return;
+  clearTimeout(appTimer);
+  // Если через 2 секунды страница всё ещё на экране, приложение не открылось.
+  appTimer = setTimeout(() => {
+    if (document.visibilityState === "visible") { fallback = true; renderSheet(); }
+  }, 2000);
+  location.href = `bank${code}://`;
 });
+const cancelFallback = () => { if (document.visibilityState === "hidden") clearTimeout(appTimer); };
+document.addEventListener("visibilitychange", cancelFallback);
+window.addEventListener("pagehide", () => clearTimeout(appTimer));
 $("share").addEventListener("click", () => {
   const ls = lines(), { items, total } = totals();
   if (!ls.length) { toast("Сначала отметь, что брал"); return; }
