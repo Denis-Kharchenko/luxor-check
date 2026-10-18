@@ -304,14 +304,17 @@ $("banks").addEventListener("click", e => {
   const sum = String(totals().total);
   try { navigator.clipboard.writeText(sum).then(() => toast("Сумма скопирована"), () => {}); } catch (_) {}
   renderSheet();
-  const code = BANKS.find(x => x[0] === bank)[3];
-  if (!code) return;
+  const app = BANKS.find(x => x[0] === bank)[3];
+  if (!app) return;
   clearTimeout(appTimer);
+  // Обычная https-ссылка: телефон сам решит, открыть приложение или сайт. Открываем в новой вкладке,
+  // чтобы страница счёта осталась на месте.
+  if (app.startsWith("https://")) { window.open(app, "_blank", "noopener"); return; }
   // Если через 2 секунды страница всё ещё на экране, приложение не открылось.
   appTimer = setTimeout(() => {
     if (document.visibilityState === "visible") { fallback = true; renderSheet(); }
   }, 2000);
-  location.href = `bank${code}://`;
+  location.href = app;
 });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") clearTimeout(appTimer); });
 window.addEventListener("pagehide", () => clearTimeout(appTimer));

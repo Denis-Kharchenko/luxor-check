@@ -1,14 +1,16 @@
 // Общее для страницы счёта и страницы создания: банки, упаковка счёта в ссылку, телефоны.
 
-// [id, название, цвет, код банка в СБП, сайт]. Приложение открываем по схеме bank<код>://.
+// [id, название, цвет, ссылка на приложение, сайт].
+// Ссылки на приложения проверены на телефоне (test-banks.html) для Т-Банка, Сбера, Озона и Яндекса;
+// для Альфы, ВТБ и Газпромбанка пока стоит общая схема СБП bank<код>://, она может не сработать.
 const BANKS = [
-  ["sber", "Сбер", "#21a038", "100000000111", "https://online.sberbank.ru/"],
-  ["tbank", "Т-Банк", "#ffdd2d", "100000000004", "https://www.tbank.ru/mybank/payments/"],
-  ["alfa", "Альфа", "#ef3124", "100000000008", "https://web.alfabank.ru/"],
-  ["vtb", "ВТБ", "#4d7bff", "100000000005", "https://online.vtb.ru/"],
-  ["ozon", "Озон Банк", "#005bff", "100000000273", "https://finance.ozon.ru/"],
-  ["gpb", "Газпромбанк", "#4a8fd8", "100000000001", "https://www.gazprombank.ru/"],
-  ["yandex", "Яндекс Банк", "#fc3f1d", "100000000150", "https://bank.yandex.ru/"],
+  ["sber", "Сбер", "#21a038", "sberbankonline://", "https://online.sberbank.ru/"],
+  ["tbank", "Т-Банк", "#ffdd2d", "bank100000000004://", "https://www.tbank.ru/mybank/payments/"],
+  ["alfa", "Альфа", "#ef3124", "bank100000000008://", "https://web.alfabank.ru/"],
+  ["vtb", "ВТБ", "#4d7bff", "bank100000000005://", "https://online.vtb.ru/"],
+  ["ozon", "Озон Банк", "#005bff", "ozon://finance", "https://finance.ozon.ru/"],
+  ["gpb", "Газпромбанк", "#4a8fd8", "bank100000000001://", "https://www.gazprombank.ru/"],
+  ["yandex", "Яндекс Банк", "#fc3f1d", "https://bank.yandex.ru/", "https://bank.yandex.ru/"],
   ["other", "Другой банк", "#a397b3", "", ""],
 ];
 const bankName = id => (BANKS.find(b => b[0] === id) || [, id])[1];
