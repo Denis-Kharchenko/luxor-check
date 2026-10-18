@@ -81,8 +81,28 @@ h2 { font: 700 13px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppe
 .toast {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(220px + env(safe-area-inset-bottom, 0px));
   background: var(--ok); color: #0c2417; font-weight: 700; padding: 8px 14px; border-radius: 999px; font-size: 13px;
-  z-index: 10; transition: opacity .2s;
+  z-index: 30; transition: opacity .2s;
 }
+button.btn.primary { border: 0; }
+.sheet { position: fixed; inset: 0; z-index: 20; background: rgb(8 5 12 / .7); display: flex; align-items: flex-end; justify-content: center; }
+.sheet-in {
+  width: 100%; max-width: 560px; max-height: 92%; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 18px 18px 0 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: 18px; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  display: grid; gap: 14px;
+}
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sheet-head h3 { margin: 0; font: 700 18px/1.2 var(--f-display); }
+.x { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 20px; cursor: pointer; }
+.banks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.bank { justify-content: flex-start; background: var(--bg); }
+.bank i { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--c); }
+.bank[aria-current=true] { border-color: var(--accent); color: var(--accent); }
+.steps { margin: 0; padding: 12px 14px 12px 32px; background: var(--bg); border-radius: 12px; display: grid; gap: 6px; font-size: 14px; }
+.steps b { color: var(--accent); }
+.sheet .btns { grid-template-columns: 1fr 1fr; }
 .foot { display: flex; gap: 8px; flex-wrap: wrap; }
 .foot .btn { flex: 1 1 160px; }
 .note { font-size: 12px; color: var(--muted); }
@@ -120,7 +140,7 @@ h2 { font: 700 13px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppe
     <button class="btn" id="share" type="button">Скопировать мой список для чата</button>
     <button class="btn" id="reset" type="button">Сбросить</button>
   </div>
-  <p class="note">Перевод по номеру в Т-Банк. Если кнопка не открыла приложение, скопируй номер и сумму и переведи вручную: <b>Платежи → По номеру телефона</b>.</p>
+  <p class="note">Перевод по номеру телефона в Т-Банк из любого банка. Если приложение не открылось само, открой его вручную: <b>Платежи → По номеру телефона</b>.</p>
 </div>
 
 <div class="pay">
@@ -130,21 +150,48 @@ h2 { font: 700 13px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppe
       <div class="big" id="total">0 ₽</div>
     </div>
     <div class="btns">
-      <a class="btn primary" id="open" href="#" target="_blank" rel="noopener" aria-disabled="true">Открыть Т-Банк</a>
+      <button class="btn primary" id="open" type="button" aria-disabled="true">Перевести</button>
       <button class="btn" id="copyPhone" type="button">Копировать номер</button>
       <button class="btn" id="copySum" type="button">Копировать сумму</button>
     </div>
     <div class="phone">+7 922 426-18-75 · Т-Банк</div>
   </div>
 </div>
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head">
+      <h3 id="sheetTitle">Из какого банка переводишь?</h3>
+      <button class="x" id="sheetClose" type="button" aria-label="Закрыть">×</button>
+    </div>
+    <div class="banks" id="banks"></div>
+    <ol class="steps" id="steps"></ol>
+    <div class="btns">
+      <button class="btn" id="sheetPhone" type="button">Копировать номер</button>
+      <button class="btn" id="sheetSum" type="button">Копировать сумму</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
 // Личная ссылка для переводов из приложения Т-Банка (вида https://www.tbank.ru/rm/...).
-// Пока пусто, кнопка «Открыть Т-Банк» ведёт на страницу банка.
+// Пока пусто, кнопка Т-Банка ведёт на страницу платежей банка.
 const TBANK_LINK = "";
 const PHONE = "+79224261875";
+const PHONE_SHOWN = "+7 922 426-18-75";
 const FEE = 50;
+// На телефоне с установленным приложением эти ссылки обычно открывают приложение банка.
+const BANKS = [
+  ["sber", "Сбер", "#21a038", "https://online.sberbank.ru/"],
+  ["tbank", "Т-Банк", "#ffdd2d", TBANK_LINK || "https://www.tbank.ru/mybank/payments/"],
+  ["alfa", "Альфа", "#ef3124", "https://web.alfabank.ru/"],
+  ["vtb", "ВТБ", "#0a2896", "https://online.vtb.ru/"],
+  ["ozon", "Озон Банк", "#005bff", "https://finance.ozon.ru/"],
+  ["gpb", "Газпромбанк", "#4a8fd8", "https://www.gazprombank.ru/"],
+  ["yandex", "Яндекс Банк", "#fc3f1d", "https://bank.yandex.ru/"],
+  ["other", "Другой банк", "#a397b3", ""],
+];
+let bank = "";
 
 const DRINKS = [
   ["Пина-колада", 1, 350], ["Зелёный дракон", 1, 360], ["Лонг-Айленд", 4, 2280],
@@ -193,10 +240,29 @@ function renderPay() {
   $("total").textContent = rub(total);
   $("breakdown").textContent = `${rub(items)} + ${FEE} ₽ сбор`;
   const open = $("open");
-  open.href = TBANK_LINK || "https://www.tbank.ru/mybank/payments/";
   open.setAttribute("aria-disabled", total ? "false" : "true");
-  open.textContent = total ? `Открыть Т-Банк · ${rub(total)}` : "Отметь, что пил";
+  open.textContent = total ? `Перевести ${rub(total)}` : "Отметь, что брал";
 }
+
+function renderSheet() {
+  const { total } = totals();
+  $("banks").innerHTML = BANKS.map(([id, name, c, url]) => url
+    ? `<a class="btn bank" href="${url}" target="_blank" rel="noopener" data-bank="${id}" style="--c:${c}" aria-current="${bank === id}"><i></i>${name}</a>`
+    : `<button class="btn bank" type="button" data-bank="${id}" style="--c:${c}" aria-current="${bank === id}"><i></i>${name}</button>`
+  ).join("");
+  const own = bank === "tbank";
+  $("steps").innerHTML = [
+    "Открой приложение своего банка, раздел <b>Платежи → По номеру телефона</b>",
+    `Номер: <b>${PHONE_SHOWN}</b>`,
+    own ? "Получатель тоже в Т-Банке, банк выбирать не нужно" : "Банк получателя: <b>Т-Банк</b> (перевод через СБП)",
+    `Сумма: <b>${rub(total)}</b>${bank ? ", уже скопирована, просто вставь" : ""}`,
+  ].map(s => `<li>${s}</li>`).join("");
+}
+function openSheet() {
+  if (!totals().total) return;
+  renderSheet(); $("sheet").hidden = false; $("sheetClose").focus();
+}
+function closeSheet() { $("sheet").hidden = true; $("open").focus(); }
 function render() { renderList("drinks", DRINKS, "d"); renderList("food", FOOD, "f"); renderPay(); save(); }
 
 let tt;
@@ -224,14 +290,25 @@ $("who").value = state.who;
 $("who").addEventListener("input", e => { state.who = e.target.value.trim(); save(); });
 $("copyPhone").addEventListener("click", () => copy(PHONE, "Номер скопирован"));
 $("copySum").addEventListener("click", () => copy(String(totals().total), "Сумма скопирована"));
-// Копируем сумму перед переходом, чтобы в приложении её осталось только вставить.
-$("open").addEventListener("click", () => {
-  const { total } = totals();
-  if (total) { try { navigator.clipboard.writeText(String(total)).catch(() => {}); } catch (_) {} }
+$("open").addEventListener("click", openSheet);
+$("sheetClose").addEventListener("click", closeSheet);
+$("sheet").addEventListener("click", e => { if (e.target === $("sheet")) closeSheet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
+$("sheetPhone").addEventListener("click", () => copy(PHONE, "Номер скопирован"));
+$("sheetSum").addEventListener("click", () => copy(String(totals().total), "Сумма скопирована"));
+// Копируем сумму перед переходом в банк, чтобы в приложении её осталось только вставить.
+$("banks").addEventListener("click", e => {
+  const b = e.target.closest("[data-bank]");
+  if (!b) return;
+  bank = b.dataset.bank;
+  const sum = String(totals().total);
+  try { navigator.clipboard.writeText(sum).then(() => toast("Сумма скопирована"), () => {}); } catch (_) {}
+  // Перерисовываем после перехода по ссылке, иначе клик потеряется.
+  setTimeout(renderSheet, 0);
 });
 $("share").addEventListener("click", () => {
   const ls = lines(), { items, total } = totals();
-  if (!ls.length) { toast("Сначала отметь, что пил"); return; }
+  if (!ls.length) { toast("Сначала отметь, что брал"); return; }
   const text = `${state.who || "Я"} — LUXOR, стол 10:\n` +
     ls.map(([n, v]) => `• ${n} — ${rub(Math.ceil(v))}`).join("\n") +
     `\nИтого: ${rub(items)} + ${FEE} ₽ сбор = ${rub(total)}\nПеревожу на ${PHONE} (Т-Банк)`;
